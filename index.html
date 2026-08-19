@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Daily Ledger — Budget Passbook</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C2541">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Daily Ledger">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1EAD9;
+    --paper-2:#E8DFC9;
+    --paper-line:#CBBB98;
+    --cover:#1C2541;
+    --cover-2:#141B33;
+    --ink:#2A2118;
+    --ink-soft:#6B5F4C;
+    --green:#0F6B4C;
+    --green-soft:#E1EEE6;
+    --red:#A3392B;
+    --red-soft:#F3E1DC;
+    --gold:#AD8A3F;
+    --font-display:'Roboto Slab', serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cover);
+    font-family:var(--font-body);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  #shell{
+    width:100%;
+    max-width:460px;
+    min-height:100vh;
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 34px;
+    background-position: 0 118px;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 0 60px rgba(0,0,0,0.35);
+  }
+  header.ledger-header{
+    background:linear-gradient(180deg, var(--cover) 0%, var(--cover-2) 100%);
+    color:#EFE9D8;
+    padding:22px 20px 20px;
+    border-bottom:3px double var(--gold);
+    position:relative;
+    z-index:2;
+  }
+  .brandrow{display:flex;align-items:baseline;justify-content:space-between;}
+  .brand{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.5px;
+  }
+  .brand small{
+    display:block;
+    font-family:var(--font-mono);
+    font-weight:400;
+    font-size:10px;
+    letter-spacing:2px;
+    color:var(--gold);
+    margin-top:2px;
+  }
+  .dateline{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:#C9C2AA;
+    text-align:right;
+  }
+  main{
+    flex:1;
+    padding:18px 18px 100px;
+    position:relative;
+    z-index:1;
+  }
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  /* Setup screen */
+  .setup-card{
+    background:#fffdf6;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    padding:22px 18px;
+    margin-top:20px;
+    box-shadow:0 3px 0 var(--paper-line);
+  }
+  .setup-card h2{
+    font-family:var(--font-display);
+    font-size:19px;
+    margin:0 0 4px;
+  }
+  .setup-card p.hint{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin:0 0 18px;
+    line-height:1.5;
+  }
+  label.field{display:block;margin-bottom:16px;}
+  label.field span{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+    font-weight:600;
+  }
+  .rupee-input{
+    display:flex;
+    align-items:center;
+    border:1.5px solid var(--paper-line);
+    border-radius:10px;
+    background:#fff;
+    overflow:hidden;
+  }
+  .rupee-input .prefix{
+    font-family:var(--font-mono);
+    font-weight:600;
+    padding:12px 10px 12px 14px;
+    color:var(--ink-soft);
+    border-right:1px solid var(--paper-line);
+    background:var(--paper-2);
+  }
+  .rupee-input input{
+    border:none;
+    outline:none;
+    padding:12px 12px;
+    font-family:var(--font-mono);
+    font-size:16px;
+    font-weight:600;
+    width:100%;
+    background:transparent;
+    color:var(--ink);
+  }
+  select, input[type=text]{
+    width:100%;
+    border:1.5px solid var(--paper-line);
+    border-radius:10px;
+    padding:12px 12px;
+    font-family:var(--font-body);
+    font-size:15px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:none;
+    border-radius:10px;
+    padding:13px 18px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:14.5px;
+    cursor:pointer;
+    width:100%;
+  }
+  .btn-primary{background:var(--cover);color:#F4EFDE;}
+  .btn-primary:active{background:var(--cover-2);}
+  .btn-outline{background:transparent;border:1.5px solid var(--cover);color:var(--cover);}
+  .btn-danger{background:var(--red);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--ink-soft);font-weight:500;}
+
+  /* Stamp ring */
+  .stamp-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    margin:22px 0 10px;
+    position:relative;
+  }
+  .ring-box{position:relative;width:216px;height:216px;}
+  .ring-box svg{transform:rotate(-90deg);}
+  .ring-center{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;
+  }
+  .ring-center .label{
+    font-size:10px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:600;
+  }
+  .ring-center .amount{
+    font-family:var(--font-mono);
+    font-weight:600;
+    font-size:30px;
+    color:var(--ink);
+    margin:2px 0;
+  }
+  .ring-center .sub{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .stamp-badge{
+    position:absolute;
+    bottom:6px; right:-4px;
+    border:2.5px solid var(--green);
+    color:var(--green);
+    border-radius:50%;
+    width:78px;height:78px;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:0.5px;
+    line-height:1.15;
+    transform:rotate(-11deg);
+    mix-blend-mode:multiply;
+    opacity:0.85;
+    background:radial-gradient(circle, rgba(255,255,255,0) 60%, rgba(255,255,255,0) 100%);
+  }
+  .stamp-badge.over{border-color:var(--red);color:var(--red);}
+  .stamp-badge span{display:block;}
+
+  /* Sections */
+  .section-title{
+    font-family:var(--font-display);
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--ink-soft);
+    margin:26px 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-title::after{
+    content:"";flex:1;border-bottom:1px dashed var(--paper-line);
+  }
+
+  .field-divider{
+    font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600;
+    color:var(--ink-soft);margin:6px 0 12px;padding-top:10px;border-top:1px dashed var(--paper-line);
+  }
+  .cycle-toggle{
+    display:flex;align-items:center;gap:10px;
+    background:#fffdf6;border:1.5px solid var(--paper-line);border-radius:10px;
+    padding:12px 14px;margin-bottom:16px;cursor:pointer;
+  }
+  .cycle-toggle input{width:18px;height:18px;flex:none;accent-color:var(--green);}
+  .cycle-toggle span{font-size:13px;color:var(--ink);line-height:1.4;}
+  .cycle-day-pill{
+    font-family:var(--font-mono);font-size:11.5px;color:var(--ink-soft);
+    text-align:center;margin-top:6px;
+  }
+  .cycle-day-pill.overdue{color:var(--red);font-weight:600;}
+  .cycle-overdue-banner{
+    background:var(--red-soft);border:1px solid var(--red);border-radius:10px;
+    padding:12px 14px;margin:0 0 16px;font-size:13px;color:var(--red);line-height:1.45;
+  }
+  .wallet-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+  .wallet-cell{
+    background:#fffdf6;border:1px solid var(--paper-line);border-radius:12px;
+    padding:12px 14px;
+  }
+  .wallet-cell .wk{font-size:10.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);font-weight:600;}
+  .wallet-cell .wv{font-family:var(--font-mono);font-weight:600;font-size:17px;margin-top:4px;}
+  .method-toggle{display:flex;gap:8px;}
+  .method-btn{
+    flex:1;border:1.5px solid var(--paper-line);border-radius:10px;padding:11px 6px;
+    background:#fff;font-family:var(--font-body);font-weight:600;font-size:13.5px;
+    color:var(--ink-soft);cursor:pointer;
+  }
+  .method-btn.selected{border-color:var(--cover);background:var(--paper-2);color:var(--ink);}
+  .method-filter{display:flex;gap:8px;margin-top:16px;}
+  .mf-btn{
+    flex:1;border:1.5px solid var(--paper-line);border-radius:30px;padding:8px 6px;
+    background:#fffdf6;font-family:var(--font-body);font-weight:600;font-size:12.5px;
+    color:var(--ink-soft);cursor:pointer;
+  }
+  .mf-btn.selected{background:var(--cover);color:#F4EFDE;border-color:var(--cover);}
+  .method-tag{
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.4px;text-transform:uppercase;
+    color:var(--ink-soft);border:1px solid var(--paper-line);border-radius:4px;
+    padding:1px 4px;margin-left:6px;
+  }
+  .quick-actions{display:flex;gap:10px;margin-top:14px;}
+  .quick-actions .btn{flex:1;padding:12px;font-size:13.5px;}
+
+  .savings-box{
+    background:#fffdf6;
+    border:1px solid var(--paper-line);
+    border-radius:var(--radius);
+    padding:16px;
+  }
+  .savings-box .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .savings-box .row .goal{font-family:var(--font-mono);font-weight:600;font-size:15px;}
+  .savings-box .row .pct{font-family:var(--font-mono);font-size:12px;color:var(--green);font-weight:600;}
+  .progress-track{
+    height:10px;border-radius:6px;background:var(--paper-2);
+    border:1px solid var(--paper-line);overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg, var(--green), #4C9A78);
+    border-radius:6px 0 0 6px;
+  }
+  .savings-note{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+
+  /* Ledger rows (today list) */
+  .entry-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:11px 4px;border-bottom:1px solid var(--paper-line);
+    font-size:13.5px;
+  }
+  .entry-row:last-child{border-bottom:none;}
+  .entry-left .cat{font-weight:600;}
+  .entry-left .note{color:var(--ink-soft);font-size:12px;}
+  .entry-left .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;
+  }
+  .entry-amt{font-family:var(--font-mono);font-weight:600;white-space:nowrap;}
+  .entry-amt.debit{color:var(--red);}
+  .entry-amt.credit{color:var(--green);}
+  .empty-note{
+    text-align:center;color:var(--ink-soft);font-size:13px;padding:22px 10px;
+  }
+
+  /* History */
+  .summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px;}
+  .summary-cell{
+    background:#fffdf6;border:1px solid var(--paper-line);border-radius:10px;
+    padding:10px 8px;text-align:center;
+  }
+  .summary-cell .k{font-size:9.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);font-weight:600;}
+  .summary-cell .v{font-family:var(--font-mono);font-weight:600;font-size:14px;margin-top:4px;}
+  .passbook{margin-top:18px;background:#fffdf6;border:1px solid var(--paper-line);border-radius:var(--radius);overflow:hidden;}
+  .pb-head{
+    display:grid;grid-template-columns: 2fr 1fr 1fr 1fr;
+    background:var(--cover);color:#EFE9D8;
+    font-size:9.5px;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;
+    padding:9px 10px;
+  }
+  .pb-date-divider{
+    background:var(--paper-2);
+    padding:5px 10px;font-family:var(--font-mono);font-size:10.5px;
+    color:var(--ink-soft);font-weight:600;letter-spacing:0.5px;
+    border-top:1px solid var(--paper-line);border-bottom:1px solid var(--paper-line);
+  }
+  .pb-row{
+    display:grid;grid-template-columns: 2fr 1fr 1fr 1fr;
+    padding:9px 10px;font-size:12px;align-items:center;
+    border-bottom:1px solid #EFE7D3;
+  }
+  .pb-row .particulars .cat{font-weight:600;display:block;}
+  .pb-row .particulars .note{color:var(--ink-soft);font-size:10.5px;}
+  .pb-row .num{font-family:var(--font-mono);text-align:right;font-size:11.5px;}
+  .pb-row .debit{color:var(--red);}
+  .pb-row .credit{color:var(--green);}
+  .pb-row .bal{font-weight:600;}
+  .cat-breakdown{margin-top:18px;}
+  .cat-bar-row{margin-bottom:10px;}
+  .cat-bar-row .lbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;}
+  .cat-bar-row .lbl .amt{font-family:var(--font-mono);color:var(--ink-soft);}
+  .cat-bar-track{height:8px;background:var(--paper-2);border-radius:5px;overflow:hidden;border:1px solid var(--paper-line);}
+  .cat-bar-fill{height:100%;background:var(--gold);}
+
+  /* Settings */
+  .settings-card{
+    background:#fffdf6;border:1px solid var(--paper-line);border-radius:var(--radius);
+    padding:18px;margin-top:16px;
+  }
+  .settings-card h3{margin:0 0 14px;font-family:var(--font-display);font-size:15px;}
+  .danger-zone{margin-top:26px;border:1px dashed var(--red);border-radius:var(--radius);padding:16px;}
+  .danger-zone p{font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.5;}
+
+  /* FAB + tabbar */
+  .fab{
+    position:fixed;
+    left:50%;
+    transform:translateX(calc(-50% + 0px));
+    bottom:82px;
+    width:100%;
+    max-width:460px;
+    display:flex;
+    justify-content:flex-end;
+    padding:0 20px;
+    pointer-events:none;
+    z-index:5;
+  }
+  .fab button{
+    pointer-events:all;
+    width:56px;height:56px;border-radius:50%;
+    background:var(--gold);color:#241C0E;
+    border:none;font-size:26px;font-weight:700;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  nav.tabbar{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;
+    width:100%;max-width:460px;
+    background:var(--cover);
+    display:flex;
+    border-top:3px double var(--gold);
+    z-index:6;
+  }
+  nav.tabbar button{
+    flex:1;background:none;border:none;color:#9098B5;
+    font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:0.4px;
+    padding:12px 4px 14px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    text-transform:uppercase;
+  }
+  nav.tabbar button .ico{font-family:var(--font-display);font-size:16px;}
+  nav.tabbar button.active{color:#F4EFDE;}
+
+  /* Modal / bottom sheet */
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,16,10,0.5);
+    display:none;align-items:flex-end;justify-content:center;z-index:20;
+  }
+  .overlay.active{display:flex;}
+  .sheet{
+    width:100%;max-width:460px;background:var(--paper);
+    border-radius:20px 20px 0 0;
+    padding:20px 20px 26px;
+    border-top:3px double var(--gold);
+    max-height:85vh;overflow-y:auto;
+  }
+  .sheet h3{font-family:var(--font-display);font-size:18px;margin:0 0 4px;}
+  .sheet .sub{font-size:12px;color:var(--ink-soft);margin:0 0 16px;}
+  .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+  .cat-chip{
+    border:1.5px solid var(--paper-line);border-radius:10px;padding:10px 6px;
+    text-align:center;font-size:12.5px;font-weight:600;cursor:pointer;background:#fff;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+  }
+  .cat-chip .dot{width:9px;height:9px;border-radius:50%;}
+  .cat-chip.selected{border-color:var(--cover);background:var(--paper-2);}
+  .sheet-actions{display:flex;gap:10px;margin-top:6px;}
+
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:170px;background:var(--cover);color:#F4EFDE;
+    padding:10px 18px;border-radius:30px;font-size:13px;
+    z-index:30;opacity:0;transition:opacity 0.25s;pointer-events:none;
+    max-width:400px;text-align:center;
+  }
+  .toast.show{opacity:1;}
+
+  ::selection{background:var(--gold);color:#241C0E;}
+</style>
+</head>
+<body>
+<div id="shell">
+  <header class="ledger-header">
+    <div class="brandrow">
+      <div class="brand">Daily Ledger<small>PERSONAL BUDGET PASSBOOK</small></div>
+      <div class="dateline" id="dateline"></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="screen-setup" class="screen">
+      <div class="setup-card">
+        <h2 id="setupTitle">Start your first cycle</h2>
+        <p class="hint">Daily Ledger runs in 30-day cycles starting from today. Enter what you'd like to set aside as savings, and what you currently have on hand — the rest gets split into a spending amount for each remaining day, adjusting automatically as you log income and expenses. When your next income arrives, you'll get the option to start a fresh 30-day cycle from that day.</p>
+        <label class="field">
+          <span>Savings goal for this cycle</span>
+          <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="inSavings" placeholder="0"></div>
+        </label>
+        <div class="field-divider">How much is in each, right now?</div>
+        <label class="field">
+          <span>Cash in hand</span>
+          <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="inCash" placeholder="0"></div>
+        </label>
+        <label class="field">
+          <span>Online / bank balance</span>
+          <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="inOnline" placeholder="0"></div>
+        </label>
+        <button class="btn btn-primary" id="btnSetupSave">Start cycle</button>
+      </div>
+    </section>
+
+    <section id="screen-today" class="screen">
+      <div id="cycleOverdueBanner" class="cycle-overdue-banner" style="display:none;"></div>
+      <div class="stamp-wrap">
+        <div class="ring-box">
+          <svg width="216" height="216" viewBox="0 0 216 216">
+            <circle cx="108" cy="108" r="94" fill="none" stroke="#E3D9BE" stroke-width="14"/>
+            <circle id="ringProgress" cx="108" cy="108" r="94" fill="none" stroke="#0F6B4C" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 1000"/>
+          </svg>
+          <div class="ring-center">
+            <div class="label">Left to spend today</div>
+            <div class="amount" id="todayAmount">₹0</div>
+            <div class="sub" id="todayBudgetOf">of ₹0 budget</div>
+          </div>
+          <div class="stamp-badge" id="stampBadge"><span id="stampLine1">ON</span><span id="stampLine2">BUDGET</span></div>
+        </div>
+        <div class="cycle-day-pill" id="cycleDayPill"></div>
+      </div>
+
+      <div class="wallet-grid">
+        <div class="wallet-cell">
+          <div class="wk">Cash in hand</div>
+          <div class="wv" id="walletCash">₹0</div>
+        </div>
+        <div class="wallet-cell">
+          <div class="wk">Online / bank</div>
+          <div class="wv" id="walletOnline">₹0</div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="btn btn-outline" id="btnAddIncome">+ Log income</button>
+        <button class="btn btn-primary" id="btnAddExpense">+ Log expense</button>
+      </div>
+
+      <div class="section-title">Savings goal</div>
+      <div class="savings-box">
+        <div class="row"><span class="goal" id="savingsGoalAmt">₹0</span><span class="pct" id="savingsPct">0%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="savingsFill" style="width:0%"></div></div>
+        <p class="savings-note" id="savingsNote"></p>
+      </div>
+
+      <div class="section-title">Today's entries</div>
+      <div id="todayEntries"></div>
+    </section>
+
+    <section id="screen-history" class="screen">
+      <div class="method-filter" id="methodFilter">
+        <button class="mf-btn selected" data-method="all">All</button>
+        <button class="mf-btn" data-method="cash">Cash</button>
+        <button class="mf-btn" data-method="online">Online</button>
+      </div>
+      <div class="section-title" style="margin-top:14px;">This cycle</div>
+      <div class="summary-grid">
+        <div class="summary-cell"><div class="k">Income</div><div class="v" id="sumIncome">₹0</div></div>
+        <div class="summary-cell"><div class="k">Spent</div><div class="v" id="sumSpent">₹0</div></div>
+        <div class="summary-cell"><div class="k" id="sumBankedLabel">Banked</div><div class="v" id="sumBanked">₹0</div></div>
+      </div>
+
+      <div class="cat-breakdown" id="catBreakdown"></div>
+
+      <div class="section-title">Passbook</div>
+      <div class="passbook">
+        <div class="pb-head"><div>Particulars</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div><div style="text-align:right">Balance</div></div>
+        <div id="pbBody"></div>
+      </div>
+    </section>
+
+    <section id="screen-settings" class="screen">
+      <div class="settings-card">
+        <h3>This cycle's numbers</h3>
+        <label class="field">
+          <span>Savings goal</span>
+          <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="setSavings"></div>
+        </label>
+        <label class="field">
+          <span>Cycle start date</span>
+          <input type="date" id="setCycleStart">
+        </label>
+        <div class="field-divider">Wallet starting points</div>
+        <label class="field">
+          <span>Cash in hand</span>
+          <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="setCash"></div>
+        </label>
+        <label class="field">
+          <span>Online / bank balance</span>
+          <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="setOnline"></div>
+        </label>
+        <button class="btn btn-primary" id="btnSettingsSave">Save changes</button>
+      </div>
+
+      <div class="danger-zone">
+        <h3 style="color:var(--red);">Reset this cycle</h3>
+        <p>Clears every entry logged in this cycle, including logged income. Your savings goal, starting balances, and cycle start date stay the same. This can't be undone.</p>
+        <button class="btn btn-danger" id="btnResetMonth">Clear this cycle's entries</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="fab" id="fabWrap">
+    <button id="fabBtn">+</button>
+  </div>
+
+  <nav class="tabbar">
+    <button class="tab active" data-tab="today"><span class="ico">◆</span>Today</button>
+    <button class="tab" data-tab="history"><span class="ico">▤</span>History</button>
+    <button class="tab" data-tab="settings"><span class="ico">✎</span>Settings</button>
+  </nav>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h3 id="sheetTitle">Log an expense</h3>
+    <p class="sub" id="sheetSub">What did you spend on, and how much?</p>
+    <div id="catGridWrap">
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+    <label class="field">
+      <span>Paid with</span>
+      <div class="method-toggle" id="methodToggle">
+        <button type="button" class="method-btn selected" data-method="cash">Cash</button>
+        <button type="button" class="method-btn" data-method="online">Online</button>
+      </div>
+    </label>
+    <label class="field">
+      <span>Amount</span>
+      <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="entryAmount" placeholder="0"></div>
+    </label>
+    <label class="cycle-toggle" id="startCycleField" style="display:none;">
+      <input type="checkbox" id="startNewCycleToggle">
+      <span>Start a new 30-day cycle from today. Any cash/online balance left from the current cycle carries over — this income becomes the first entry of the new cycle.</span>
+    </label>
+    <label class="field">
+      <span>Note (optional)</span>
+      <input type="text" id="entryNote" placeholder="e.g. auto to campus">
+    </label>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="btnCancelEntry" style="flex:1;">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveEntry" style="flex:2;">Add entry</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="sheet">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p class="sub" id="confirmMsg" style="margin-bottom:20px;"></p>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="confirmCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn btn-danger" id="confirmActionBtn" style="flex:2;">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var CATEGORIES = [
+    {id:"Food", color:"#B08B3F"},
+    {id:"Travel", color:"#3E6FA8"},
+    {id:"Shopping", color:"#8E4F8A"},
+    {id:"Bills", color:"#A3392B"},
+    {id:"Health", color:"#0F6B4C"},
+    {id:"Other", color:"#6B5F4C"}
+  ];
+
+  var STORE_CYCLES = "dailyLedger.cycles";
+  var STORE_ENTRIES = "dailyLedger.entries";
+  var CYCLE_LENGTH = 30;
+
+  function loadCycles(){ try{ var c = JSON.parse(localStorage.getItem(STORE_CYCLES)); return Array.isArray(c) ? c : []; }catch(e){ return []; } }
+  function saveCycles(c){ localStorage.setItem(STORE_CYCLES, JSON.stringify(c)); }
+  function loadEntries(){ try{ return JSON.parse(localStorage.getItem(STORE_ENTRIES)) || []; }catch(e){ return []; } }
+  function saveEntries(e){ localStorage.setItem(STORE_ENTRIES, JSON.stringify(e)); }
+
+  function pad(n){ return n<10 ? "0"+n : ""+n; }
+  function todayDate(){ return new Date(); }
+  function dateKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function parseDateKey(dk){
+    var p = dk.split("-");
+    return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+  }
+  function daysBetween(d1, d2){
+    var MS = 86400000;
+    var a = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    var b = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
+    return Math.round((b-a)/MS);
+  }
+  function fmtRupee(n){
+    n = Math.round(n);
+    var neg = n<0; n = Math.abs(n);
+    var s = n.toString();
+    var last3 = s.length>3 ? s.slice(-3) : s;
+    var rest = s.length>3 ? s.slice(0,-3) : "";
+    if(rest !== ""){ rest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ","); }
+    var out = (rest ? rest+"," : "") + last3;
+    return (neg?"-":"") + "₹" + out;
+  }
+  function fmtDateLabel(dk){
+    var parts = dk.split("-");
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    return d.toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short'});
+  }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function catColor(id){ for(var i=0;i<CATEGORIES.length;i++){ if(CATEGORIES[i].id===id) return CATEGORIES[i].color; } return "#6B5F4C"; }
+
+  var state = {
+    cycles: loadCycles(),
+    entries: loadEntries(),
+    activeTab: "today",
+    sheetType: "expense",
+    selectedCategory: "Food",
+    selectedMethod: "cash",
+    historyMethod: "all"
+  };
+
+  var now = todayDate();
+
+  function dateline(){
+    document.getElementById('dateline').textContent = now.toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  }
+
+  function getActiveCycle(){ return state.cycles.length ? state.cycles[state.cycles.length-1] : null; }
+
+  function cycleEntries(cycleId){
+    return state.entries.filter(function(e){ return e.cycleId===cycleId; });
+  }
+
+  function computeFigures(){
+    var cfg = getActiveCycle();
+    if(!cfg) return null;
+    var entries = cycleEntries(cfg.id);
+    var totalIncome = 0;
+    var totalExpense = 0;
+    entries.forEach(function(e){
+      if(e.type==='expense') totalExpense += e.amount;
+      else totalIncome += e.amount;
+    });
+    var startingFunds = (cfg.cashStart||0) + (cfg.onlineStart||0);
+    var totalAvailable = startingFunds + totalIncome;
+    var availableToSpend = totalAvailable - cfg.savingsGoal;
+    var remaining = availableToSpend - totalExpense;
+
+    var cycleStart = parseDateKey(cfg.startDate);
+    var cycleDay = daysBetween(cycleStart, now) + 1;
+    var daysLeft = cfg.length - cycleDay + 1;
+    var overdue = daysLeft <= 0;
+    var daysLeftForMath = Math.max(1, daysLeft);
+
+    var todayKey = dateKey(now);
+    var spentToday = 0;
+    entries.forEach(function(e){ if(e.type==='expense' && e.date===todayKey) spentToday += e.amount; });
+    var remainingBeforeToday = remaining + spentToday;
+    var todayBudget = remainingBeforeToday / daysLeftForMath;
+    var todayRemaining = todayBudget - spentToday;
+
+    var progressFrac = Math.max(0, Math.min(1, cycleDay/cfg.length));
+    var idealSpentToDate = availableToSpend * progressFrac;
+    var bankedSurplus = Math.max(0, idealSpentToDate - totalExpense);
+
+    var cashBalance = (cfg.cashStart||0);
+    var onlineBalance = (cfg.onlineStart||0);
+    entries.forEach(function(e){
+      if(e.method==='cash'){ cashBalance += e.type==='income' ? e.amount : -e.amount; }
+      else if(e.method==='online'){ onlineBalance += e.type==='income' ? e.amount : -e.amount; }
+    });
+
+    return {
+      cfg: cfg, totalIncome: totalIncome, totalExpense: totalExpense,
+      availableToSpend: availableToSpend, remaining: remaining, todayBudget: todayBudget,
+      spentToday: spentToday, todayRemaining: todayRemaining, bankedSurplus: bankedSurplus,
+      daysLeft: daysLeft, cycleDay: cycleDay, cycleLength: cfg.length, overdue: overdue,
+      cashBalance: cashBalance, onlineBalance: onlineBalance
+    };
+  }
+
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  /* ---------- Setup ---------- */
+  function needsSetup(){ return !getActiveCycle(); }
+
+  document.getElementById('btnSetupSave').addEventListener('click', function(){
+    var savings = parseFloat(document.getElementById('inSavings').value);
+    if(isNaN(savings) || savings<0){ savings = 0; }
+    var cashStart = parseFloat(document.getElementById('inCash').value); if(isNaN(cashStart)||cashStart<0) cashStart=0;
+    var onlineStart = parseFloat(document.getElementById('inOnline').value); if(isNaN(onlineStart)||onlineStart<0) onlineStart=0;
+    state.cycles.push({ id: uid(), startDate: dateKey(now), length: CYCLE_LENGTH, savingsGoal: savings, cashStart: cashStart, onlineStart: onlineStart });
+    saveCycles(state.cycles);
+    toast("Cycle started");
+    render();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('#methodFilter .mf-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      state.historyMethod = btn.getAttribute('data-method');
+      Array.prototype.forEach.call(document.querySelectorAll('#methodFilter .mf-btn'), function(b){
+        b.classList.toggle('selected', b===btn);
+      });
+      render();
+    });
+  });
+
+  /* ---------- Tabs ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar button'), function(btn){
+    btn.addEventListener('click', function(){
+      state.activeTab = btn.getAttribute('data-tab');
+      render();
+    });
+  });
+
+  /* ---------- Sheet (add entry) ---------- */
+  var overlay = document.getElementById('overlay');
+  function openSheet(type){
+    state.sheetType = type;
+    state.selectedCategory = "Food";
+    state.selectedMethod = "cash";
+    Array.prototype.forEach.call(document.querySelectorAll('#methodToggle .method-btn'), function(b){
+      b.classList.toggle('selected', b.getAttribute('data-method')==='cash');
+    });
+    document.getElementById('sheetTitle').textContent = type==='expense' ? "Log an expense" : "Log income";
+    document.getElementById('sheetSub').textContent = type==='expense' ? "What did you spend on, and how much?" : "Money you've received — log it whenever it comes in.";
+    document.getElementById('catGridWrap').style.display = type==='expense' ? 'block' : 'none';
+    document.getElementById('startCycleField').style.display = type==='income' ? 'flex' : 'none';
+    document.getElementById('startNewCycleToggle').checked = false;
+    document.getElementById('entryAmount').value = "";
+    document.getElementById('entryNote').value = "";
+    renderCatGrid();
+    overlay.classList.add('active');
+  }
+  function closeSheet(){ overlay.classList.remove('active'); }
+  document.getElementById('fabBtn').addEventListener('click', function(){ openSheet('expense'); });
+  document.getElementById('btnAddExpense').addEventListener('click', function(){ openSheet('expense'); });
+  document.getElementById('btnAddIncome').addEventListener('click', function(){ openSheet('income'); });
+  document.getElementById('btnCancelEntry').addEventListener('click', closeSheet);
+  Array.prototype.forEach.call(document.querySelectorAll('#methodToggle .method-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      state.selectedMethod = btn.getAttribute('data-method');
+      Array.prototype.forEach.call(document.querySelectorAll('#methodToggle .method-btn'), function(b){
+        b.classList.toggle('selected', b===btn);
+      });
+    });
+  });
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) closeSheet(); });
+
+  function renderCatGrid(){
+    var wrap = document.getElementById('catGrid');
+    wrap.innerHTML = "";
+    CATEGORIES.forEach(function(c){
+      var chip = document.createElement('div');
+      chip.className = 'cat-chip' + (state.selectedCategory===c.id ? ' selected' : '');
+      chip.innerHTML = '<span class="dot" style="background:'+c.color+'"></span>'+c.id;
+      chip.addEventListener('click', function(){
+        state.selectedCategory = c.id;
+        renderCatGrid();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  document.getElementById('btnSaveEntry').addEventListener('click', function(){
+    var amt = parseFloat(document.getElementById('entryAmount').value);
+    if(!amt || amt<=0){ toast("Enter an amount above ₹0"); return; }
+    var note = document.getElementById('entryNote').value.trim();
+    var activeCycle = getActiveCycle();
+    var startNew = state.sheetType==='income' && document.getElementById('startNewCycleToggle').checked;
+
+    if(startNew){
+      var f = computeFigures();
+      var newCycle = {
+        id: uid(),
+        startDate: dateKey(now),
+        length: CYCLE_LENGTH,
+        savingsGoal: activeCycle.savingsGoal,
+        cashStart: f.cashBalance,
+        onlineStart: f.onlineBalance
+      };
+      state.cycles.push(newCycle);
+      saveCycles(state.cycles);
+      var incomeEntry = {
+        id: uid(), type:'income', category:'Income', method: state.selectedMethod,
+        note: note, amount: amt, date: dateKey(now), ts: Date.now(), cycleId: newCycle.id
+      };
+      state.entries.push(incomeEntry);
+      saveEntries(state.entries);
+      closeSheet();
+      toast("New 30-day cycle started");
+      render();
+      return;
+    }
+
+    var entry = {
+      id: uid(),
+      type: state.sheetType,
+      category: state.sheetType==='expense' ? state.selectedCategory : 'Income',
+      method: state.selectedMethod,
+      note: note,
+      amount: amt,
+      date: dateKey(now),
+      ts: Date.now(),
+      cycleId: activeCycle.id
+    };
+    state.entries.push(entry);
+    saveEntries(state.entries);
+    closeSheet();
+    toast(state.sheetType==='expense' ? "Expense added" : "Income added");
+    render();
+  });
+
+  /* ---------- Settings ---------- */
+  document.getElementById('btnSettingsSave').addEventListener('click', function(){
+    var savings = parseFloat(document.getElementById('setSavings').value);
+    if(isNaN(savings) || savings<0) savings=0;
+    var cashStart = parseFloat(document.getElementById('setCash').value); if(isNaN(cashStart)||cashStart<0) cashStart=0;
+    var onlineStart = parseFloat(document.getElementById('setOnline').value); if(isNaN(onlineStart)||onlineStart<0) onlineStart=0;
+    var startDateVal = document.getElementById('setCycleStart').value;
+    var cfg = getActiveCycle();
+    if(startDateVal){ cfg.startDate = startDateVal; }
+    cfg.savingsGoal = savings;
+    cfg.cashStart = cashStart;
+    cfg.onlineStart = onlineStart;
+    saveCycles(state.cycles);
+    toast("Settings updated");
+    render();
+  });
+
+  document.getElementById('btnResetMonth').addEventListener('click', function(){
+    openConfirm(
+      "Clear this cycle?",
+      "This removes every entry logged in this cycle, including logged income. Your savings goal, starting balances, and cycle start date stay the same. This can't be undone.",
+      "Clear entries",
+      function(){
+        var cfg = getActiveCycle();
+        state.entries = state.entries.filter(function(e){ return e.cycleId !== cfg.id; });
+        saveEntries(state.entries);
+        toast("This cycle's entries cleared");
+        render();
+      }
+    );
+  });
+
+  /* ---------- Custom confirm (native confirm() is unreliable in mobile/in-app browsers) ---------- */
+  var confirmOverlay = document.getElementById('confirmOverlay');
+  var confirmAction = null;
+  function openConfirm(title, msg, actionLabel, onConfirm){
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmActionBtn').textContent = actionLabel;
+    confirmAction = onConfirm;
+    confirmOverlay.classList.add('active');
+  }
+  function closeConfirm(){ confirmOverlay.classList.remove('active'); confirmAction = null; }
+  document.getElementById('confirmCancelBtn').addEventListener('click', closeConfirm);
+  confirmOverlay.addEventListener('click', function(e){ if(e.target===confirmOverlay) closeConfirm(); });
+  document.getElementById('confirmActionBtn').addEventListener('click', function(){
+    var fn = confirmAction;
+    closeConfirm();
+    if(fn) fn();
+  });
+
+  /* ---------- Render ---------- */
+  function render(){
+    dateline();
+    var setup = needsSetup();
+    document.getElementById('screen-setup').classList.toggle('active', setup);
+    document.getElementById('fabWrap').style.display = setup ? 'none' : 'flex';
+    document.querySelector('nav.tabbar').style.display = setup ? 'none' : 'flex';
+
+    ['today','history','settings'].forEach(function(t){
+      document.getElementById('screen-'+t).classList.toggle('active', !setup && state.activeTab===t);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar button'), function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-tab')===state.activeTab);
+    });
+
+    if(setup) return;
+
+    var f = computeFigures();
+    renderToday(f);
+    if(state.activeTab==='history') renderHistory(f);
+    if(state.activeTab==='settings') renderSettings(f);
+  }
+
+  function renderToday(f){
+    var banner = document.getElementById('cycleOverdueBanner');
+    if(f.overdue){
+      banner.style.display = 'block';
+      banner.textContent = "This cycle started " + f.cycleDay + " days ago and its 30 days are up. Numbers below are stretched over just 1 day until you log your next income and start a new cycle.";
+    } else {
+      banner.style.display = 'none';
+    }
+    var pill = document.getElementById('cycleDayPill');
+    pill.textContent = "Day " + f.cycleDay + " of " + f.cycleLength + (f.overdue ? "" : " · " + f.daysLeft + " day" + (f.daysLeft===1?"":"s") + " left");
+    pill.classList.toggle('overdue', f.overdue);
+
+    var pct = f.todayBudget>0 ? Math.max(0, Math.min(1, f.todayRemaining/f.todayBudget)) : 0;
+    var circumference = 2*Math.PI*94;
+    var dash = Math.max(0, pct*circumference);
+    var ring = document.getElementById('ringProgress');
+    var over = f.todayRemaining < 0;
+    ring.setAttribute('stroke', over ? '#A3392B' : '#0F6B4C');
+    ring.setAttribute('stroke-dasharray', dash+" "+circumference);
+
+    document.getElementById('todayAmount').textContent = fmtRupee(f.todayRemaining);
+    document.getElementById('todayAmount').style.color = over ? 'var(--red)' : 'var(--ink)';
+    document.getElementById('todayBudgetOf').textContent = "of " + fmtRupee(f.todayBudget) + " budget";
+
+    var badge = document.getElementById('stampBadge');
+    badge.classList.toggle('over', over);
+    document.getElementById('stampLine1').textContent = over ? "OVER" : "ON";
+    document.getElementById('stampLine2').textContent = over ? "BUDGET" : "BUDGET";
+
+    document.getElementById('walletCash').textContent = fmtRupee(f.cashBalance);
+    document.getElementById('walletOnline').textContent = fmtRupee(f.onlineBalance);
+
+    document.getElementById('savingsGoalAmt').textContent = "Goal " + fmtRupee(f.cfg.savingsGoal);
+    var spct = f.cfg.savingsGoal>0 ? Math.min(100, Math.round((f.bankedSurplus/f.cfg.savingsGoal)*100)) : 0;
+    document.getElementById('savingsPct').textContent = spct + "%";
+    document.getElementById('savingsFill').style.width = spct + "%";
+    var note;
+    if(f.remaining < 0){
+      note = "You're " + fmtRupee(Math.abs(f.remaining)) + " past what keeps this goal on track. Lighter days ahead will help close the gap.";
+    } else if(spct >= 100){
+      note = "You're ahead of pace — this goal looks secure if spending stays steady.";
+    } else {
+      note = fmtRupee(f.bankedSurplus) + " banked toward this goal so far, based on spending to date.";
+    }
+    document.getElementById('savingsNote').textContent = note;
+
+    var todayKey = dateKey(now);
+    var todays = state.entries.filter(function(e){ return e.date===todayKey && e.cycleId===f.cfg.id; })
+      .sort(function(a,b){ return b.ts-a.ts; });
+    var wrap = document.getElementById('todayEntries');
+    wrap.innerHTML = "";
+    if(todays.length===0){
+      wrap.innerHTML = '<div class="empty-note">No entries yet today. Tap + to log one.</div>';
+    } else {
+      todays.forEach(function(e){
+        var row = document.createElement('div');
+        row.className = 'entry-row';
+        var color = e.type==='expense' ? catColor(e.category) : '#0F6B4C';
+        var methodLabel = e.method==='online' ? 'Online' : 'Cash';
+        row.innerHTML =
+          '<div class="entry-left"><span class="dot" style="background:'+color+'"></span><span class="cat">'+e.category+'</span><span class="method-tag">'+methodLabel+'</span>'+
+          (e.note ? '<div class="note">'+escapeHtml(e.note)+'</div>' : '') + '</div>'+
+          '<div class="entry-amt '+(e.type==='expense'?'debit':'credit')+'">'+(e.type==='expense'?'−':'+')+fmtRupee(e.amount).replace('₹','₹')+'</div>';
+        wrap.appendChild(row);
+      });
+    }
+  }
+
+  function renderHistory(f){
+    var filt = state.historyMethod;
+    var allCycleEntries = cycleEntries(f.cfg.id);
+    var filtered = filt==='all' ? allCycleEntries : allCycleEntries.filter(function(e){ return e.method===filt; });
+
+    if(filt==='all'){
+      document.getElementById('sumIncome').textContent = fmtRupee(f.totalIncome);
+      document.getElementById('sumSpent').textContent = fmtRupee(f.totalExpense);
+      document.getElementById('sumBankedLabel').textContent = "Banked";
+      document.getElementById('sumBanked').textContent = fmtRupee(f.bankedSurplus);
+    } else {
+      var fIncome = 0, fExpense = 0;
+      filtered.forEach(function(e){ if(e.type==='income') fIncome += e.amount; else fExpense += e.amount; });
+      var start = filt==='cash' ? (f.cfg.cashStart||0) : (f.cfg.onlineStart||0);
+      document.getElementById('sumIncome').textContent = fmtRupee(fIncome);
+      document.getElementById('sumSpent').textContent = fmtRupee(fExpense);
+      document.getElementById('sumBankedLabel').textContent = "Balance";
+      document.getElementById('sumBanked').textContent = fmtRupee(start + fIncome - fExpense);
+    }
+
+    var byCat = {};
+    filtered.forEach(function(e){
+      if(e.type==='expense'){ byCat[e.category] = (byCat[e.category]||0) + e.amount; }
+    });
+    var maxCat = Math.max.apply(null, Object.keys(byCat).map(function(k){ return byCat[k]; }).concat([1]));
+    var cbWrap = document.getElementById('catBreakdown');
+    cbWrap.innerHTML = '<div class="section-title" style="margin-top:0;">By category</div>';
+    var catKeys = Object.keys(byCat).sort(function(a,b){ return byCat[b]-byCat[a]; });
+    if(catKeys.length===0){
+      cbWrap.innerHTML += '<div class="empty-note">No expenses logged yet this cycle.</div>';
+    } else {
+      catKeys.forEach(function(k){
+        var row = document.createElement('div');
+        row.className = 'cat-bar-row';
+        row.innerHTML = '<div class="lbl"><span>'+k+'</span><span class="amt">'+fmtRupee(byCat[k])+'</span></div>'+
+          '<div class="cat-bar-track"><div class="cat-bar-fill" style="width:'+Math.round((byCat[k]/maxCat)*100)+'%;background:'+catColor(k)+'"></div></div>';
+        cbWrap.appendChild(row);
+      });
+    }
+
+    var pbEntries = filtered.slice().sort(function(a,b){ return a.ts-b.ts; });
+    var running = filt==='all' ? ((f.cfg.cashStart||0)+(f.cfg.onlineStart||0)) : (filt==='cash' ? (f.cfg.cashStart||0) : (f.cfg.onlineStart||0));
+    var byDate = {};
+    pbEntries.forEach(function(e){
+      running += e.type==='income' ? e.amount : -e.amount;
+      if(!byDate[e.date]) byDate[e.date]=[];
+      byDate[e.date].push({e:e, bal:running});
+    });
+    var dateKeys = Object.keys(byDate).sort().reverse();
+    var body = document.getElementById('pbBody');
+    body.innerHTML = "";
+    if(dateKeys.length===0){
+      body.innerHTML = '<div class="empty-note">Nothing recorded yet.</div>';
+    } else {
+      dateKeys.forEach(function(dk){
+        var div = document.createElement('div');
+        div.className = 'pb-date-divider';
+        div.textContent = fmtDateLabel(dk);
+        body.appendChild(div);
+        byDate[dk].slice().reverse().forEach(function(item){
+          var e = item.e;
+          var row = document.createElement('div');
+          row.className = 'pb-row';
+          var pbMethodLabel = e.category==='Opening Balance' ? '' : ('<span class="method-tag">'+(e.method==='online'?'Online':'Cash')+'</span>');
+          row.innerHTML =
+            '<div class="particulars"><span class="cat">'+e.category+pbMethodLabel+'</span>'+(e.note?'<span class="note">'+escapeHtml(e.note)+'</span>':'')+'</div>'+
+            '<div class="num debit">'+(e.type==='expense'?fmtRupee(e.amount).replace('₹','₹'):'')+'</div>'+
+            '<div class="num credit">'+(e.type==='income'?fmtRupee(e.amount).replace('₹','₹'):'')+'</div>'+
+            '<div class="num bal">'+fmtRupee(item.bal)+'</div>';
+          body.appendChild(row);
+        });
+      });
+    }
+  }
+
+  function renderSettings(f){
+    document.getElementById('setSavings').value = f.cfg.savingsGoal;
+    document.getElementById('setCash').value = f.cfg.cashStart||0;
+    document.getElementById('setOnline').value = f.cfg.onlineStart||0;
+    document.getElementById('setCycleStart').value = f.cfg.startDate;
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  render();
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
