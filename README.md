@@ -1,44 +1,67 @@
 # Daily Ledger — Budget Passbook
 
-A pocket-sized budgeting app styled like a bank passbook. Log income and expenses as they happen, and it splits what's left into a daily spending amount — recalculated automatically as your cycle goes on.
+Daily Ledger is a simple budgeting app that tells you one thing clearly: **how much you can safely spend today.**
 
-Built as a single-file web app (HTML/CSS/JS, no backend, no build step) with offline support via a PWA manifest and service worker, so it installs on Android like a real app.
+Instead of a monthly budget you have to do math on yourself, it takes whatever money you have left, looks at how many days remain in your current pay cycle, and splits it evenly — so you always know your number for the day. It looks and feels like an old-school bank passbook, and it works entirely on your phone. No sign-up, no account, no internet connection required once installed.
 
-## Features
+## What it does
 
-- **Pay-cycle budgeting** — instead of resetting on the 1st of every calendar month, a cycle runs 30 days from whenever you log your income. Handy if you're paid irregularly.
-- **Start a new cycle on your terms** — when you log income, you choose whether it tops up the current cycle or kicks off a fresh 30-day one. Leftover cash/online balance carries over automatically.
-- **"Left to spend today"** — the day's budget is your remaining cycle balance divided across the days left, adjusted live as you spend.
-- **Cash vs. online tracking** — every entry is tagged by payment method, with running balances for each.
-- **Savings goal** — set a target for the cycle and see how much you've banked toward it based on your pace of spending.
-- **Passbook-style history** — a running debit/credit/balance ledger, filterable by cash, online, or all, with a category breakdown.
-- **Works offline** — once installed, it runs entirely on your device. All data is stored locally in the browser (`localStorage`); nothing is sent anywhere.
+- **Tells you what's safe to spend today** — a big number on the home screen, recalculated every time you log something.
+- **Follows your actual payday, not the calendar** — most budget apps reset on the 1st of the month. This one doesn't assume that. You start a new 30-day cycle whenever you actually get paid, whether that's regular or not.
+- **Tracks cash and online money separately** — so you always know how much is in your wallet versus your bank/UPI, alongside a combined total.
+- **Helps you save toward a goal** — set a savings target for the cycle, and see how you're tracking toward it as you go.
+- **Keeps a full history** — every entry you log shows up in a passbook-style ledger you can scroll back through, filtered by cash, online, or both.
 
-## Installing on Android
+Everything you enter stays only on your own phone. There's no cloud account and nothing is sent anywhere.
 
-This repo is set up to be hosted with **GitHub Pages** and installed as a Progressive Web App (PWA):
+## Getting it onto your phone (Android)
 
-1. In this repo, go to **Settings → Pages**.
-2. Under **Branch**, choose `main` and `/ (root)`, then **Save**.
-3. GitHub will give you a live URL (something like `https://yourusername.github.io/Daily-Ledger/`) within a minute or two.
-4. Open that URL on your Android phone in **Chrome**.
-5. Tap the **⋮** menu → **Install app** (or use the install prompt if it appears automatically).
+1. Open this link on your phone in **Chrome**: [https://blinding-dash.github.io/Daily-Ledger/](https://blinding-dash.github.io/Daily-Ledger/)
+2. Tap the **⋮** (three dots) in the top-right corner of Chrome.
+3. Tap **Install app** (you may also see a banner pop up at the bottom offering this automatically — either works).
+4. Confirm the install.
 
-It'll then live on your home screen and app drawer with its own icon, open full-screen with no browser bar, and keep working without an internet connection.
+That's it — you'll now have a "Daily Ledger" icon on your home screen and in your app drawer, just like any other app. It opens full-screen with no browser bar and keeps working even without signal or Wi-Fi.
 
-## Files
+*(On iPhone, open the link in Safari, tap the Share icon, then "Add to Home Screen.")*
 
-| File | Purpose |
-|---|---|
-| `index.html` | The entire app — markup, styles, and logic in one file |
-| `manifest.json` | PWA metadata (name, icons, colors, start page) that makes it installable |
-| `sw.js` | Service worker that caches the app for offline use |
-| `icon-192.png`, `icon-512.png` | App icons used on the home screen and app drawer |
+## Using the app
 
-## Local use / development
+### First time setup
+When you open it for the first time, it'll ask for three things:
+- **Savings goal** — how much you'd like to set aside this cycle (can be ₹0 if you don't want one right now)
+- **Cash in hand** — how much physical cash you currently have
+- **Online / bank balance** — how much is in your bank or UPI accounts right now
 
-No build tools or dependencies needed. Just open `index.html` directly in a browser to run it. Note that installing as a PWA (offline caching, home-screen install prompt) only works when served over `https://` — opening the local file directly will run the app fine, but without those PWA features.
+That's all it needs to get started.
 
-## Data & privacy
+### Logging money
+Two buttons on the home screen: **+ Log income** and **+ Log expense**.
 
-All entries, cycle settings, and balances are stored only in your browser's local storage on your device. There's no server, account, or sync — clearing your browser data or uninstalling the app will erase it, so there's no built-in backup. Nothing here is financial advice; it's a personal tracking tool.
+- For an expense, pick a category (Food, Travel, Shopping, Bills, Health, Other), whether it was cash or online, and the amount.
+- For income, just enter the amount and where it went (cash or online).
+
+### Starting a new cycle when you get paid
+When you log income, you'll see a checkbox: **"Start a new 30-day cycle from today."**
+
+- Leave it **unchecked** if this is just a top-up (a gift, a refund, side income) — it simply adds to your current cycle's budget.
+- **Check it** when this is your actual pay/allowance arriving — it closes out the current cycle and starts a fresh 30-day one from today, carrying over any money you haven't spent yet.
+
+This is the key idea behind the app: you decide when your "month" starts, based on your own payday.
+
+### The home screen
+- The big ring shows **how much you can spend today** — it shrinks as you log expenses and adjusts automatically each day.
+- Below it, your **cash and online balances**.
+- A **savings goal bar** showing progress toward what you set aside.
+- A list of everything logged **today**.
+
+### History tab
+A full passbook of every entry this cycle — income (credit), expenses (debit), and a running balance — plus a breakdown of spending by category. Filter it to see cash-only or online-only if you want.
+
+### Settings tab
+Edit your savings goal, cash/online balances, or manually correct your cycle's start date if needed. There's also an option to clear all entries for the current cycle if you want to start over (your goal and balances stay put).
+
+## A few things to know
+
+- **Nothing is backed up automatically.** Since your data lives only on your phone, uninstalling the app or clearing your browser data will erase it. If that matters to you, treat it like any local notes app and be mindful before clearing browser storage.
+- **This isn't financial advice** — it's a simple tool to help you see, day to day, what you can afford to spend.
