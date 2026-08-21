@@ -1255,7 +1255,10 @@
       btnBackupNow.style.display = "";
       btnDisconnect.style.display = "";
     } else {
-      statusEl.textContent = "Not connected. Backs up daily once connected — and if this device has no data yet, it'll pull in your last backup automatically.";
+      var looksFresh = (state.cycles.length === 0 && state.entries.length === 0);
+      statusEl.textContent = looksFresh
+        ? "Not connected. If you've backed up before, tap Connect below to restore it — some browsers block the automatic silent restore, so this is the reliable way."
+        : "Not connected. Tap Connect to start backing up automatically.";
       btnConnect.style.display = "";
       btnBackupNow.style.display = "none";
       btnDisconnect.style.display = "none";
