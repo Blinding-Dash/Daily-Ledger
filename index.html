@@ -588,6 +588,9 @@
           <div class="rupee-input"><span class="prefix">₹</span><input type="number" inputmode="decimal" id="inOnline" placeholder="0"></div>
         </label>
         <button class="btn btn-primary" id="btnSetupSave">Start cycle</button>
+        <p style="text-align:center;font-size:12.5px;color:var(--ink-soft);margin:16px 0 8px;">Already using Daily Ledger on another device?</p>
+        <button class="btn btn-outline" id="btnSetupDriveRestore" style="margin-bottom:10px;">Restore from Google Drive</button>
+        <button class="btn btn-outline" id="btnSetupFileRestore">Restore from backup file</button>
       </div>
     </section>
 
@@ -1192,6 +1195,12 @@
 
   document.getElementById('btnImportData').addEventListener('click', function(){
     document.getElementById('importFileInput').click();
+  });
+  document.getElementById('btnSetupFileRestore').addEventListener('click', function(){
+    document.getElementById('importFileInput').click();
+  });
+  document.getElementById('btnSetupDriveRestore').addEventListener('click', function(){
+    ensureDriveToken('connect', true);
   });
 
   document.getElementById('importFileInput').addEventListener('change', function(e){
