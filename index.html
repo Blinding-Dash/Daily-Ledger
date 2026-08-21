@@ -708,8 +708,8 @@
       <div class="settings-card">
         <h3>Backup &amp; restore</h3>
         <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;line-height:1.5;">Save a backup file to move your data to a new device, or restore from a backup you made earlier.</p>
-        <button class="btn btn-outline" id="btnExportData" style="margin-bottom:10px;">↓ Download backup</button>
-        <button class="btn btn-outline" id="btnImportData">↑ Restore from backup</button>
+        <button class="btn btn-outline" id="btnExportData" style="margin-bottom:10px;">⬇ Download backup</button>
+        <button class="btn btn-outline" id="btnImportData">⬆ Restore from backup</button>
         <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;">
       </div>
 
@@ -1274,9 +1274,7 @@
           driveAccessToken = resp.access_token;
           driveTokenExpiry = Date.now() + ((resp.expires_in || 3300) * 1000);
           if(action === 'connect'){
-            driveMeta.connected = true;
-            saveDriveMeta(driveMeta);
-            performDriveBackup(true);
+            handleDriveConnected();
           } else if(action === 'backup'){
             performDriveBackup(true);
           } else if(action === 'silent'){
@@ -1311,47 +1309,72 @@
     driveTokenClient.requestAccessToken({prompt: interactive ? 'consent' : ''});
   }
 
+  // Looks up an existing backup file by name in Drive. Used so we never
+  // blindly POST a new file just because the local fileId pointer was lost
+  // (e.g. after the app's storage was cleared) — that's what caused
+  // duplicate/empty backups to be created over a real one.
+  function findDriveFileId(){
+    var query = "name='" + DRIVE_FILE_NAME + "' and trashed=false";
+    return fetch("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(query) + "&fields=files(id)&spaces=drive", {
+      headers: {"Authorization": "Bearer " + driveAccessToken}
+    }).then(function(res){
+      if(!res.ok) throw new Error("list failed");
+      return res.json();
+    }).then(function(data){
+      var files = (data && data.files) || [];
+      return files.length ? files[0].id : null;
+    });
+  }
+
   function performDriveBackup(interactive){
     if(!driveAccessToken){
       if(interactive) toast("Couldn't reach Google Drive");
       return;
     }
     var body = JSON.stringify(buildBackupPayload(), null, 2);
-    var req;
-    if(driveMeta.fileId){
-      req = fetch("https://www.googleapis.com/upload/drive/v3/files/" + driveMeta.fileId + "?uploadType=media", {
-        method: "PATCH",
-        headers: {
-          "Authorization": "Bearer " + driveAccessToken,
-          "Content-Type": "application/json"
-        },
-        body: body
-      });
-    } else {
-      var boundary = "dlbackup" + Date.now();
-      var metadata = {name: DRIVE_FILE_NAME, mimeType: "application/json"};
-      var multipartBody =
-        "--" + boundary + "\r\n" +
-        "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
-        JSON.stringify(metadata) + "\r\n" +
-        "--" + boundary + "\r\n" +
-        "Content-Type: application/json\r\n\r\n" +
-        body + "\r\n" +
-        "--" + boundary + "--";
-      req = fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + driveAccessToken,
-          "Content-Type": "multipart/related; boundary=" + boundary
-        },
-        body: multipartBody
-      });
-    }
-    req.then(function(res){
-      if(!res.ok) throw new Error("Drive upload failed: " + res.status);
-      return res.json();
-    }).then(function(data){
-      if(data && data.id){ driveMeta.fileId = data.id; }
+    var idPromise = driveMeta.fileId ? Promise.resolve(driveMeta.fileId) : findDriveFileId();
+
+    idPromise.then(function(existingId){
+      if(existingId){
+        return fetch("https://www.googleapis.com/upload/drive/v3/files/" + existingId + "?uploadType=media", {
+          method: "PATCH",
+          headers: {
+            "Authorization": "Bearer " + driveAccessToken,
+            "Content-Type": "application/json"
+          },
+          body: body
+        }).then(function(res){
+          if(!res.ok) throw new Error("Drive upload failed: " + res.status);
+          return res.json();
+        }).then(function(data){
+          driveMeta.fileId = (data && data.id) || existingId;
+        });
+      } else {
+        var boundary = "dlbackup" + Date.now();
+        var metadata = {name: DRIVE_FILE_NAME, mimeType: "application/json"};
+        var multipartBody =
+          "--" + boundary + "\r\n" +
+          "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+          JSON.stringify(metadata) + "\r\n" +
+          "--" + boundary + "\r\n" +
+          "Content-Type: application/json\r\n\r\n" +
+          body + "\r\n" +
+          "--" + boundary + "--";
+        return fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + driveAccessToken,
+            "Content-Type": "multipart/related; boundary=" + boundary
+          },
+          body: multipartBody
+        }).then(function(res){
+          if(!res.ok) throw new Error("Drive upload failed: " + res.status);
+          return res.json();
+        }).then(function(data){
+          if(data && data.id){ driveMeta.fileId = data.id; }
+        });
+      }
+    }).then(function(){
       driveMeta.lastSync = new Date().toISOString();
       saveDriveMeta(driveMeta);
       if(interactive) toast("Backed up to Drive");
@@ -1360,6 +1383,24 @@
       if(interactive) toast("Drive backup failed — try again later");
       renderDriveUI();
     });
+  }
+
+  // Runs right after the user grants Drive access via the Connect button.
+  // If this device already has data, back it up as before. If this device
+  // is empty (fresh install, or storage was cleared), look for an existing
+  // backup and restore it FIRST — only create a fresh backup file if Drive
+  // genuinely has nothing yet. This is the fix for the bug where connecting
+  // on an empty/wiped device silently overwrote a real backup with nothing.
+  function handleDriveConnected(){
+    driveMeta.connected = true;
+    saveDriveMeta(driveMeta);
+    if(state.cycles.length === 0 && state.entries.length === 0){
+      restoreLatestFromDrive(function(found){
+        if(!found){ performDriveBackup(true); }
+      });
+    } else {
+      performDriveBackup(true);
+    }
   }
 
   function maybeSilentDriveBackup(){
@@ -1380,7 +1421,11 @@
     driveTokenClient.requestAccessToken({prompt: ''});
   }
 
-  function restoreLatestFromDrive(){
+  // cb(found) is called with true if a backup file exists in Drive (whether
+  // or not we actually loaded it into local state), or false if there's
+  // nothing there yet. Callers use this to decide whether it's safe to
+  // create a fresh backup file instead.
+  function restoreLatestFromDrive(cb){
     var query = "name='" + DRIVE_FILE_NAME + "' and trashed=false";
     fetch("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(query) + "&fields=files(id)&spaces=drive", {
       headers: {"Authorization": "Bearer " + driveAccessToken}
@@ -1389,34 +1434,44 @@
       return res.json();
     }).then(function(data){
       var files = (data && data.files) || [];
-      if(!files.length) return; // nothing backed up yet for this account
+      if(!files.length){ if(cb) cb(false); return; } // nothing backed up yet for this account
       var fileId = files[0].id;
+      // Link the fileId right away, whether or not we end up overwriting
+      // local state below — this is what stops a later backup from
+      // creating a duplicate file.
+      driveMeta.fileId = fileId;
       return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
         headers: {"Authorization": "Bearer " + driveAccessToken}
       }).then(function(res2){
         if(!res2.ok) throw new Error("download failed");
         return res2.json();
       }).then(function(payload){
-        if(!payload || !Array.isArray(payload.cycles) || !Array.isArray(payload.entries)) return;
-        // Re-check we're still empty — guards against a race if the user
-        // somehow added data while this request was in flight.
-        if(state.cycles.length > 0 || state.entries.length > 0) return;
-        state.cycles = payload.cycles;
-        state.entries = payload.entries;
-        saveCycles(state.cycles);
-        saveEntries(state.entries);
-        if(payload.theme){ applyTheme(payload.theme); }
+        if(!payload || !Array.isArray(payload.cycles) || !Array.isArray(payload.entries)){
+          if(cb) cb(true);
+          return;
+        }
+        // Only load into local state if we're still empty — guards against
+        // a race if the user somehow added data while this was in flight,
+        // and guards against ever overwriting real local data.
+        if(state.cycles.length === 0 && state.entries.length === 0){
+          state.cycles = payload.cycles;
+          state.entries = payload.entries;
+          saveCycles(state.cycles);
+          saveEntries(state.entries);
+          if(payload.theme){ applyTheme(payload.theme); }
+          toast("Restored your last Drive backup");
+          render();
+        }
         driveMeta.connected = true;
-        driveMeta.fileId = fileId;
         driveMeta.lastSync = new Date().toISOString();
         saveDriveMeta(driveMeta);
-        toast("Restored your last Drive backup");
-        render();
         renderDriveUI();
+        if(cb) cb(true);
       });
     }).catch(function(){
       // Silent by design — most of the time this just means there's no
       // existing consent/backup yet, which is the normal case for new users.
+      if(cb) cb(false);
     });
   }
 
