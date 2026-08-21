@@ -1452,7 +1452,10 @@
         renderDriveUI();
       },
       error_callback: function(){
-        drivePendingAction = null;
+        var action = drivePendingAction; drivePendingAction = null;
+        if(action === 'backup' || action === 'connect'){
+          toast("Couldn't reach Google — try Connect again from Settings");
+        }
         renderDriveUI();
       }
     });
@@ -1470,7 +1473,10 @@
       return;
     }
     drivePendingAction = action;
-    driveTokenClient.requestAccessToken({prompt: interactive ? 'consent' : ''});
+    // Only force the full consent screen the first time we connect — Google
+    // remembers the grant after that, so later backups can request a token
+    // silently (prompt:'') and won't re-prompt unless access was revoked.
+    driveTokenClient.requestAccessToken({prompt: action === 'connect' ? 'consent' : ''});
   }
 
   // Looks up an existing backup file by name in Drive. Used so we never

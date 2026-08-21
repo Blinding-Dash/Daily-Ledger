@@ -1,4 +1,4 @@
-const CACHE_NAME = "daily-ledger-v23";
+const CACHE_NAME = "daily-ledger-v24";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
