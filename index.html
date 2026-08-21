@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('dailyLedger.theme');
+    var applied = null;
+    if(t === 'light' || t === 'red'){ applied = t; }
+    else if(t === 'auto'){
+      var h = new Date().getHours();
+      if(h>=6 && h<10){ applied = 'red'; }
+      else if(h>=10 && h<15){ applied = 'light'; }
+      else if(h>=15 && h<19){ applied = 'red'; }
+      else { applied = 'dark'; }
+    }
+    if(applied && applied !== 'dark'){ document.documentElement.setAttribute('data-theme', applied); }
+  }catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Daily Ledger — Budget Passbook</title>
@@ -32,10 +49,74 @@
     --gold:#FFD700;
     --gold-2:#E6C200;
     --cyan:#00F0FF;
+    --ring-track:#2B3541;
+    --ring-accent:#00F0FF;
+    --on-gold:#10151C;
+    --glow-cyan:rgba(0,240,255,0.35);
+    --glow-red:rgba(255,71,87,0.4);
+    --glow-green:rgba(0,230,138,0.35);
+    --glow-green-strong:rgba(0,230,138,0.5);
+    --glow-gold:rgba(255,215,0,0.4);
+    --shell-shadow:rgba(0,0,0,0.6);
+    --color-scheme:dark;
     --font-display:'Roboto Slab', serif;
     --font-body:'Inter', sans-serif;
     --font-mono:'IBM Plex Mono', monospace;
     --radius:14px;
+  }
+  [data-theme="light"]{
+    --bg:#F4F6FC;
+    --surface:#FFFFFF;
+    --surface-2:#EEF1FA;
+    --line:#D9E0EF;
+    --cover:#FFFFFF;
+    --cover-2:#F1F4FB;
+    --ink:#12131A;
+    --ink-soft:#5B6472;
+    --green:#00B368;
+    --green-soft:rgba(0,179,104,0.12);
+    --red:#FF3B5C;
+    --red-soft:rgba(255,59,92,0.10);
+    --gold:#FFB300;
+    --gold-2:#E29F00;
+    --cyan:#2D6CFF;
+    --ring-track:#E4E9F5;
+    --ring-accent:#2D6CFF;
+    --on-gold:#181200;
+    --glow-cyan:rgba(45,108,255,0.28);
+    --glow-red:rgba(255,59,92,0.3);
+    --glow-green:rgba(0,179,104,0.28);
+    --glow-green-strong:rgba(0,179,104,0.38);
+    --glow-gold:rgba(255,179,0,0.4);
+    --shell-shadow:rgba(20,30,70,0.14);
+    --color-scheme:light;
+  }
+  [data-theme="red"]{
+    --bg:#0C0808;
+    --surface:#1C1113;
+    --surface-2:#140C0D;
+    --line:#2E1B1D;
+    --cover:#100A0B;
+    --cover-2:#060404;
+    --ink:#F2E9E7;
+    --ink-soft:#9C8482;
+    --green:#00E68A;
+    --green-soft:rgba(0,230,138,0.12);
+    --red:#FF4757;
+    --red-soft:rgba(255,71,87,0.12);
+    --gold:#C81E3A;
+    --gold-2:#A61730;
+    --cyan:#FFB020;
+    --ring-track:#2E1B1D;
+    --ring-accent:#FFB020;
+    --on-gold:#FFF3F0;
+    --glow-cyan:rgba(255,176,32,0.32);
+    --glow-red:rgba(255,71,87,0.4);
+    --glow-green:rgba(0,230,138,0.35);
+    --glow-green-strong:rgba(0,230,138,0.5);
+    --glow-gold:rgba(200,30,58,0.4);
+    --shell-shadow:rgba(0,0,0,0.65);
+    --color-scheme:dark;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
@@ -59,7 +140,7 @@
     position:relative;
     display:flex;
     flex-direction:column;
-    box-shadow:0 0 80px rgba(0,0,0,0.6);
+    box-shadow:0 0 80px var(--shell-shadow);
   }
   header.ledger-header{
     background:linear-gradient(180deg, var(--cover) 0%, var(--cover-2) 100%);
@@ -166,7 +247,7 @@
     font-size:15px;
     background:var(--surface-2);
     color:var(--ink);
-    color-scheme:dark;
+    color-scheme:var(--color-scheme);
   }
   select:focus, input:focus{ outline:none; border-color:var(--cyan); }
   .btn{
@@ -183,7 +264,7 @@
     cursor:pointer;
     width:100%;
   }
-  .btn-primary{background:var(--gold);color:var(--bg);}
+  .btn-primary{background:var(--gold);color:var(--on-gold);}
   .btn-primary:active{background:var(--gold-2);}
   .btn-outline{background:transparent;border:1.5px solid var(--gold);color:var(--gold);}
   .btn-danger{background:var(--red);color:var(--ink);}
@@ -199,6 +280,7 @@
   }
   .ring-box{position:relative;width:216px;height:216px;}
   .ring-box svg{transform:rotate(-90deg);}
+  .ring-track-bg{stroke:var(--ring-track);}
   .ring-center{
     position:absolute;inset:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -237,9 +319,9 @@
     line-height:1.15;
     transform:rotate(-11deg);
     background:var(--surface);
-    box-shadow:0 0 16px rgba(0,230,138,0.35), 0 2px 10px rgba(0,0,0,0.4);
+    box-shadow:0 0 16px var(--glow-green), 0 2px 10px rgba(0,0,0,0.4);
   }
-  .stamp-badge.over{border-color:var(--red);color:var(--red);box-shadow:0 0 16px rgba(255,71,87,0.4), 0 2px 10px rgba(0,0,0,0.4);}
+  .stamp-badge.over{border-color:var(--red);color:var(--red);box-shadow:0 0 16px var(--glow-red), 0 2px 10px rgba(0,0,0,0.4);}
   .stamp-badge span{display:block;}
 
   /* Sections */
@@ -292,13 +374,15 @@
     color:var(--ink-soft);cursor:pointer;
   }
   .method-btn.selected{border-color:var(--gold);background:var(--surface-2);color:var(--gold);}
+  .method-toggle.four-way{gap:6px;}
+  .method-toggle.four-way .method-btn{font-size:11.5px;padding:9px 3px;}
   .method-filter{display:flex;gap:8px;margin-top:16px;}
   .mf-btn{
     flex:1;border:1.5px solid var(--line);border-radius:30px;padding:8px 6px;
     background:var(--surface);font-family:var(--font-body);font-weight:600;font-size:12.5px;
     color:var(--ink-soft);cursor:pointer;
   }
-  .mf-btn.selected{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+  .mf-btn.selected{background:var(--gold);color:var(--on-gold);border-color:var(--gold);}
   .method-tag{
     font-family:var(--font-mono);font-size:9px;letter-spacing:0.4px;text-transform:uppercase;
     color:var(--ink-soft);border:1px solid var(--line);border-radius:4px;
@@ -323,7 +407,7 @@
   .progress-fill{
     height:100%;background:linear-gradient(90deg, #00B36B, var(--green));
     border-radius:6px 0 0 6px;
-    box-shadow:0 0 8px rgba(0,230,138,0.5);
+    box-shadow:0 0 8px var(--glow-green-strong);
   }
   .savings-note{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
 
@@ -411,9 +495,9 @@
   .fab button{
     pointer-events:all;
     width:56px;height:56px;border-radius:50%;
-    background:var(--gold);color:var(--bg);
+    background:var(--gold);color:var(--on-gold);
     border:none;font-size:26px;font-weight:700;
-    box-shadow:0 4px 18px rgba(255,215,0,0.4), 0 2px 8px rgba(0,0,0,0.5);
+    box-shadow:0 4px 18px var(--glow-gold), 0 2px 8px rgba(0,0,0,0.5);
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
   }
@@ -511,7 +595,7 @@
       <div class="stamp-wrap">
         <div class="ring-box">
           <svg width="216" height="216" viewBox="0 0 216 216">
-            <circle cx="108" cy="108" r="94" fill="none" stroke="#2B3541" stroke-width="14"/>
+            <circle class="ring-track-bg" cx="108" cy="108" r="94" fill="none" stroke="#2B3541" stroke-width="14"/>
             <circle id="ringProgress" cx="108" cy="108" r="94" fill="none" stroke="#00F0FF" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 1000"/>
           </svg>
           <div class="ring-center">
@@ -576,6 +660,20 @@
     </section>
 
     <section id="screen-settings" class="screen">
+      <div class="settings-card">
+        <h3>Appearance</h3>
+        <label class="field" style="margin-bottom:0;">
+          <span>Theme</span>
+          <div class="method-toggle four-way" id="themeToggle">
+            <button type="button" class="method-btn" data-theme-choice="dark">🌙 Dark</button>
+            <button type="button" class="method-btn" data-theme-choice="light">☀️ Light</button>
+            <button type="button" class="method-btn" data-theme-choice="red">🌇 Dusk</button>
+            <button type="button" class="method-btn" data-theme-choice="auto">🕐 Auto</button>
+          </div>
+        </label>
+        <p style="font-size:11px;color:var(--ink-soft);margin:10px 0 0;line-height:1.5;">Auto switches by time of day.</p>
+      </div>
+
       <div class="settings-card">
         <h3>This cycle's numbers</h3>
         <label class="field">
@@ -679,12 +777,42 @@
 
   var STORE_CYCLES = "dailyLedger.cycles";
   var STORE_ENTRIES = "dailyLedger.entries";
+  var STORE_THEME = "dailyLedger.theme";
   var CYCLE_LENGTH = 30;
 
   function loadCycles(){ try{ var c = JSON.parse(localStorage.getItem(STORE_CYCLES)); return Array.isArray(c) ? c : []; }catch(e){ return []; } }
   function saveCycles(c){ localStorage.setItem(STORE_CYCLES, JSON.stringify(c)); }
   function loadEntries(){ try{ return JSON.parse(localStorage.getItem(STORE_ENTRIES)) || []; }catch(e){ return []; } }
   function saveEntries(e){ localStorage.setItem(STORE_ENTRIES, JSON.stringify(e)); }
+
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  var THEME_FALLBACK_COVER = { dark:'#0D1117', light:'#FFFFFF', red:'#0C0808' };
+  function autoThemeForNow(){
+    var h = new Date().getHours();
+    if(h>=6 && h<10) return 'red';   // dawn
+    if(h>=10 && h<15) return 'light'; // day
+    if(h>=15 && h<19) return 'red';  // dusk
+    return 'dark';                  // night
+  }
+  function resolveTheme(pref){
+    if(pref==='auto') return autoThemeForNow();
+    return (pref==='light'||pref==='red') ? pref : 'dark';
+  }
+  function loadTheme(){
+    try{
+      var t = localStorage.getItem(STORE_THEME);
+      return (t==='light'||t==='red'||t==='auto') ? t : 'dark';
+    }catch(e){ return 'dark'; }
+  }
+  function applyTheme(pref){
+    pref = (pref==='light'||pref==='red'||pref==='auto') ? pref : 'dark';
+    state.theme = pref;
+    try{ localStorage.setItem(STORE_THEME, pref); }catch(e){}
+    var applied = resolveTheme(pref);
+    document.documentElement.setAttribute('data-theme', applied);
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    if(metaTheme) metaTheme.setAttribute('content', cssVar('--cover') || THEME_FALLBACK_COVER[applied]);
+  }
 
   function pad(n){ return n<10 ? "0"+n : ""+n; }
   function todayDate(){ return new Date(); }
@@ -725,8 +853,17 @@
     selectedCategory: "Food",
     selectedMethod: "cash",
     historyMethod: "all",
-    editingEntryId: null
+    editingEntryId: null,
+    theme: loadTheme()
   };
+  applyTheme(state.theme);
+  setInterval(function(){
+    if(state.theme==='auto'){
+      var before = document.documentElement.getAttribute('data-theme');
+      applyTheme('auto');
+      if(document.documentElement.getAttribute('data-theme') !== before){ render(); }
+    }
+  }, 5*60*1000);
 
   var now = todayDate();
 
@@ -962,6 +1099,13 @@
   });
 
   /* ---------- Settings ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('#themeToggle .method-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      applyTheme(btn.getAttribute('data-theme-choice'));
+      render();
+    });
+  });
+
   document.getElementById('btnSettingsSave').addEventListener('click', function(){
     var savings = parseFloat(document.getElementById('setSavings').value);
     if(isNaN(savings) || savings<0) savings=0;
@@ -1052,14 +1196,15 @@
     var dash = Math.max(0, pct*circumference);
     var ring = document.getElementById('ringProgress');
     var over = f.todayRemaining < 0;
-    var ringColor = over ? '#FF4757' : '#00F0FF';
+    var ringColor = over ? cssVar('--red') : cssVar('--ring-accent');
+    var ringGlow = over ? cssVar('--glow-red') : cssVar('--glow-cyan');
     ring.setAttribute('stroke', ringColor);
     ring.setAttribute('stroke-dasharray', dash+" "+circumference);
-    ring.style.filter = 'drop-shadow(0 0 8px '+ringColor+')';
+    ring.style.filter = 'drop-shadow(0 0 8px '+ringGlow+')';
 
     document.getElementById('todayAmount').textContent = fmtRupee(f.todayRemaining);
     document.getElementById('todayAmount').style.color = over ? 'var(--red)' : 'var(--ink)';
-    document.getElementById('todayAmount').style.textShadow = over ? '0 0 18px rgba(255,71,87,0.4)' : '0 0 18px rgba(0,240,255,0.35)';
+    document.getElementById('todayAmount').style.textShadow = '0 0 18px '+ringGlow;
     document.getElementById('todayBudgetOf').textContent = "of " + fmtRupee(f.todayBudget) + " budget";
 
     var badge = document.getElementById('stampBadge');
@@ -1190,6 +1335,9 @@
     document.getElementById('setCash').value = f.cfg.cashStart||0;
     document.getElementById('setOnline').value = f.cfg.onlineStart||0;
     document.getElementById('setCycleStart').value = f.cfg.startDate;
+    Array.prototype.forEach.call(document.querySelectorAll('#themeToggle .method-btn'), function(b){
+      b.classList.toggle('selected', b.getAttribute('data-theme-choice')===state.theme);
+    });
   }
 
   function escapeHtml(s){
