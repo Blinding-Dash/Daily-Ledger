@@ -1131,7 +1131,7 @@
   });
 
   /* ---------- Backup & restore ---------- */
-  document.getElementById('btnExportData').addEventListener('click', function(){
+  document.getElementById('btnExportData').addEventListener('click', async function(){
     var payload = {
       app: "daily-ledger",
       version: 1,
@@ -1140,11 +1140,29 @@
       entries: state.entries,
       theme: state.theme
     };
+    var fileName = "daily-ledger-backup-" + dateKey(now) + ".json";
     var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+
+    // Installed/standalone PWAs on Android can silently drop <a download> blob
+    // clicks. Prefer the native share sheet when the device supports sharing files.
+    if(navigator.canShare){
+      var file = new File([blob], fileName, {type:"application/json"});
+      if(navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file], title:"Daily Ledger Backup"});
+          toast("Backup saved");
+          return;
+        }catch(err){
+          // user cancelled the share sheet, or it failed — fall through to the
+          // direct-download path below rather than leaving them with nothing
+        }
+      }
+    }
+
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = "daily-ledger-backup-" + dateKey(now) + ".json";
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
