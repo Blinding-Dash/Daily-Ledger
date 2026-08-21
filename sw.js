@@ -1,4 +1,4 @@
-const CACHE_NAME = "daily-ledger-v9";
+const CACHE_NAME = "daily-ledger-v11";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
@@ -23,6 +23,10 @@ self.addEventListener("activate", function(event){
 });
 
 self.addEventListener("fetch", function(event){
+  // Let cross-origin requests (Google sign-in, Drive API calls) go straight to
+  // the network — don't intercept or cache them, they're dynamic and auth-bearing.
+  if(new URL(event.request.url).origin !== self.location.origin) return;
+
   event.respondWith(
     caches.match(event.request).then(function(cached){
       return cached || fetch(event.request).then(function(resp){

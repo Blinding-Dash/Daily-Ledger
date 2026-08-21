@@ -1255,7 +1255,7 @@
       btnBackupNow.style.display = "";
       btnDisconnect.style.display = "";
     } else {
-      statusEl.textContent = "Not connected. Once connected, backs up automatically once a day when you open the app.";
+      statusEl.textContent = "Not connected. Backs up daily once connected — and if this device has no data yet, it'll pull in your last backup automatically.";
       btnConnect.style.display = "";
       btnBackupNow.style.display = "none";
       btnDisconnect.style.display = "none";
@@ -1281,6 +1281,8 @@
             performDriveBackup(true);
           } else if(action === 'silent'){
             performDriveBackup(false);
+          } else if(action === 'fresh-restore'){
+            restoreLatestFromDrive();
           }
         } else if(action === 'connect' || action === 'backup'){
           toast("Couldn't connect to Google Drive");
@@ -1368,6 +1370,56 @@
     ensureDriveToken('silent', false);
   }
 
+  // Only ever runs when this device has zero local cycles/entries — i.e. a
+  // fresh install or a wiped device. Never overwrites data that already
+  // exists on the device, so it can't clobber anything you've entered today.
+  function attemptFreshDeviceRestore(){
+    if(state.cycles.length > 0 || state.entries.length > 0) return;
+    if(!driveTokenClient) return;
+    drivePendingAction = 'fresh-restore';
+    driveTokenClient.requestAccessToken({prompt: ''});
+  }
+
+  function restoreLatestFromDrive(){
+    var query = "name='" + DRIVE_FILE_NAME + "' and trashed=false";
+    fetch("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(query) + "&fields=files(id)&spaces=drive", {
+      headers: {"Authorization": "Bearer " + driveAccessToken}
+    }).then(function(res){
+      if(!res.ok) throw new Error("list failed");
+      return res.json();
+    }).then(function(data){
+      var files = (data && data.files) || [];
+      if(!files.length) return; // nothing backed up yet for this account
+      var fileId = files[0].id;
+      return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
+        headers: {"Authorization": "Bearer " + driveAccessToken}
+      }).then(function(res2){
+        if(!res2.ok) throw new Error("download failed");
+        return res2.json();
+      }).then(function(payload){
+        if(!payload || !Array.isArray(payload.cycles) || !Array.isArray(payload.entries)) return;
+        // Re-check we're still empty — guards against a race if the user
+        // somehow added data while this request was in flight.
+        if(state.cycles.length > 0 || state.entries.length > 0) return;
+        state.cycles = payload.cycles;
+        state.entries = payload.entries;
+        saveCycles(state.cycles);
+        saveEntries(state.entries);
+        if(payload.theme){ applyTheme(payload.theme); }
+        driveMeta.connected = true;
+        driveMeta.fileId = fileId;
+        driveMeta.lastSync = new Date().toISOString();
+        saveDriveMeta(driveMeta);
+        toast("Restored your last Drive backup");
+        render();
+        renderDriveUI();
+      });
+    }).catch(function(){
+      // Silent by design — most of the time this just means there's no
+      // existing consent/backup yet, which is the normal case for new users.
+    });
+  }
+
   document.getElementById('btnDriveConnect').addEventListener('click', function(){
     ensureDriveToken('connect', true);
   });
@@ -1395,7 +1447,11 @@
 
   window.__onGisLoad = function(){
     initDriveClient();
-    maybeSilentDriveBackup();
+    if(driveMeta.connected){
+      maybeSilentDriveBackup();
+    } else {
+      attemptFreshDeviceRestore();
+    }
     renderDriveUI();
   };
   if(window.google && google.accounts && google.accounts.oauth2){ window.__onGisLoad(); }
