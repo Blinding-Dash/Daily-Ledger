@@ -32,6 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer onload="window.__onGisLoad && window.__onGisLoad()"></script>
 <style>
   :root{
     --bg:#0D1117;
@@ -696,6 +697,14 @@
         <button class="btn btn-primary" id="btnSettingsSave">Save changes</button>
       </div>
 
+      <div class="settings-card" id="driveCard">
+        <h3>Google Drive auto-backup</h3>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;line-height:1.5;" id="driveStatusText">Not connected.</p>
+        <button class="btn btn-outline" id="btnDriveConnect" style="margin-bottom:10px;">Connect Google Drive</button>
+        <button class="btn btn-outline" id="btnDriveBackupNow" style="margin-bottom:10px;display:none;">Back up to Drive now</button>
+        <button class="btn btn-outline" id="btnDriveDisconnect" style="display:none;">Disconnect</button>
+      </div>
+
       <div class="settings-card">
         <h3>Backup &amp; restore</h3>
         <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;line-height:1.5;">Save a backup file to move your data to a new device, or restore from a backup you made earlier.</p>
@@ -786,7 +795,14 @@
   var STORE_CYCLES = "dailyLedger.cycles";
   var STORE_ENTRIES = "dailyLedger.entries";
   var STORE_THEME = "dailyLedger.theme";
+  var STORE_DRIVE = "dailyLedger.drive";
   var CYCLE_LENGTH = 30;
+
+  // Replace with the OAuth Client ID from your Google Cloud Console project
+  // (Credentials > OAuth client ID > Web application). See setup notes below.
+  var GOOGLE_CLIENT_ID = "238698743158-7j8u31cb0jf4ukj1itjj0qnvgcprkcqu.apps.googleusercontent.com";
+  var DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+  var DRIVE_FILE_NAME = "daily-ledger-backup.json";
 
   function loadCycles(){ try{ var c = JSON.parse(localStorage.getItem(STORE_CYCLES)); return Array.isArray(c) ? c : []; }catch(e){ return []; } }
   function saveCycles(c){ localStorage.setItem(STORE_CYCLES, JSON.stringify(c)); }
@@ -1131,8 +1147,8 @@
   });
 
   /* ---------- Backup & restore ---------- */
-  document.getElementById('btnExportData').addEventListener('click', async function(){
-    var payload = {
+  function buildBackupPayload(){
+    return {
       app: "daily-ledger",
       version: 1,
       exportedAt: new Date().toISOString(),
@@ -1140,6 +1156,10 @@
       entries: state.entries,
       theme: state.theme
     };
+  }
+
+  document.getElementById('btnExportData').addEventListener('click', async function(){
+    var payload = buildBackupPayload();
     var fileName = "daily-ledger-backup-" + dateKey(now) + ".json";
     var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
 
@@ -1204,6 +1224,182 @@
     };
     reader.readAsText(file);
   });
+
+  /* ---------- Google Drive auto-backup ---------- */
+  function loadDriveMeta(){
+    try{
+      var m = JSON.parse(localStorage.getItem(STORE_DRIVE));
+      return (m && typeof m==='object') ? m : {connected:false, fileId:null, lastSync:null};
+    }catch(e){ return {connected:false, fileId:null, lastSync:null}; }
+  }
+  function saveDriveMeta(m){ try{ localStorage.setItem(STORE_DRIVE, JSON.stringify(m)); }catch(e){} }
+
+  var driveMeta = loadDriveMeta();
+  var driveTokenClient = null;
+  var driveAccessToken = null;
+  var driveTokenExpiry = 0;
+  var drivePendingAction = null; // 'connect' | 'backup' | 'silent'
+
+  function renderDriveUI(){
+    var statusEl = document.getElementById('driveStatusText');
+    var btnConnect = document.getElementById('btnDriveConnect');
+    var btnBackupNow = document.getElementById('btnDriveBackupNow');
+    var btnDisconnect = document.getElementById('btnDriveDisconnect');
+    if(!statusEl) return;
+    if(driveMeta.connected){
+      var when = driveMeta.lastSync
+        ? new Date(driveMeta.lastSync).toLocaleString('en-IN', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})
+        : "not yet";
+      statusEl.textContent = "Connected. Last backup: " + when + ".";
+      btnConnect.style.display = "none";
+      btnBackupNow.style.display = "";
+      btnDisconnect.style.display = "";
+    } else {
+      statusEl.textContent = "Not connected. Once connected, backs up automatically once a day when you open the app.";
+      btnConnect.style.display = "";
+      btnBackupNow.style.display = "none";
+      btnDisconnect.style.display = "none";
+    }
+  }
+
+  function initDriveClient(){
+    if(driveTokenClient) return;
+    if(!window.google || !google.accounts || !google.accounts.oauth2) return;
+    driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: function(resp){
+        var action = drivePendingAction; drivePendingAction = null;
+        if(resp && resp.access_token){
+          driveAccessToken = resp.access_token;
+          driveTokenExpiry = Date.now() + ((resp.expires_in || 3300) * 1000);
+          if(action === 'connect'){
+            driveMeta.connected = true;
+            saveDriveMeta(driveMeta);
+            performDriveBackup(true);
+          } else if(action === 'backup'){
+            performDriveBackup(true);
+          } else if(action === 'silent'){
+            performDriveBackup(false);
+          }
+        } else if(action === 'connect' || action === 'backup'){
+          toast("Couldn't connect to Google Drive");
+        }
+        renderDriveUI();
+      },
+      error_callback: function(){
+        drivePendingAction = null;
+        renderDriveUI();
+      }
+    });
+  }
+
+  function ensureDriveToken(action, interactive){
+    if(!driveTokenClient) initDriveClient();
+    if(!driveTokenClient){
+      if(interactive) toast("Google sign-in isn't ready yet — try again in a moment");
+      return;
+    }
+    if(driveAccessToken && Date.now() < driveTokenExpiry - 60000){
+      if(action === 'connect'){ driveMeta.connected = true; saveDriveMeta(driveMeta); }
+      performDriveBackup(interactive);
+      return;
+    }
+    drivePendingAction = action;
+    driveTokenClient.requestAccessToken({prompt: interactive ? 'consent' : ''});
+  }
+
+  function performDriveBackup(interactive){
+    if(!driveAccessToken){
+      if(interactive) toast("Couldn't reach Google Drive");
+      return;
+    }
+    var body = JSON.stringify(buildBackupPayload(), null, 2);
+    var req;
+    if(driveMeta.fileId){
+      req = fetch("https://www.googleapis.com/upload/drive/v3/files/" + driveMeta.fileId + "?uploadType=media", {
+        method: "PATCH",
+        headers: {
+          "Authorization": "Bearer " + driveAccessToken,
+          "Content-Type": "application/json"
+        },
+        body: body
+      });
+    } else {
+      var boundary = "dlbackup" + Date.now();
+      var metadata = {name: DRIVE_FILE_NAME, mimeType: "application/json"};
+      var multipartBody =
+        "--" + boundary + "\r\n" +
+        "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+        JSON.stringify(metadata) + "\r\n" +
+        "--" + boundary + "\r\n" +
+        "Content-Type: application/json\r\n\r\n" +
+        body + "\r\n" +
+        "--" + boundary + "--";
+      req = fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + driveAccessToken,
+          "Content-Type": "multipart/related; boundary=" + boundary
+        },
+        body: multipartBody
+      });
+    }
+    req.then(function(res){
+      if(!res.ok) throw new Error("Drive upload failed: " + res.status);
+      return res.json();
+    }).then(function(data){
+      if(data && data.id){ driveMeta.fileId = data.id; }
+      driveMeta.lastSync = new Date().toISOString();
+      saveDriveMeta(driveMeta);
+      if(interactive) toast("Backed up to Drive");
+      renderDriveUI();
+    }).catch(function(){
+      if(interactive) toast("Drive backup failed — try again later");
+      renderDriveUI();
+    });
+  }
+
+  function maybeSilentDriveBackup(){
+    if(!driveMeta.connected) return;
+    var todayKey = dateKey(todayDate());
+    var lastKey = driveMeta.lastSync ? dateKey(new Date(driveMeta.lastSync)) : null;
+    if(lastKey === todayKey) return;
+    ensureDriveToken('silent', false);
+  }
+
+  document.getElementById('btnDriveConnect').addEventListener('click', function(){
+    ensureDriveToken('connect', true);
+  });
+  document.getElementById('btnDriveBackupNow').addEventListener('click', function(){
+    ensureDriveToken('backup', true);
+  });
+  document.getElementById('btnDriveDisconnect').addEventListener('click', function(){
+    openConfirm(
+      "Disconnect Google Drive?",
+      "This stops daily auto-backups. Your existing backup file stays in Drive untouched — you can reconnect any time.",
+      "Disconnect",
+      function(){
+        if(driveAccessToken){
+          try{ google.accounts.oauth2.revoke(driveAccessToken, function(){}); }catch(e){}
+        }
+        driveAccessToken = null;
+        driveTokenExpiry = 0;
+        driveMeta.connected = false;
+        saveDriveMeta(driveMeta);
+        toast("Disconnected from Drive");
+        renderDriveUI();
+      }
+    );
+  });
+
+  window.__onGisLoad = function(){
+    initDriveClient();
+    maybeSilentDriveBackup();
+    renderDriveUI();
+  };
+  if(window.google && google.accounts && google.accounts.oauth2){ window.__onGisLoad(); }
+  renderDriveUI();
 
   document.getElementById('btnResetMonth').addEventListener('click', function(){
     openConfirm(
@@ -1421,6 +1617,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('#themeToggle .method-btn'), function(b){
       b.classList.toggle('selected', b.getAttribute('data-theme-choice')===state.theme);
     });
+    renderDriveUI();
   }
 
   function escapeHtml(s){
