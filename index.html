@@ -239,7 +239,7 @@
     background:transparent;
     color:var(--ink);
   }
-  select, input[type=text], input[type=date]{
+  select, input[type=text], input[type=date], #setCycleLength{
     width:100%;
     border:1.5px solid var(--line);
     border-radius:10px;
@@ -501,6 +501,62 @@
     box-shadow:0 4px 18px var(--glow-gold), 0 2px 8px rgba(0,0,0,0.5);
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
+    touch-action:none;
+  }
+  #fabIncomeBtn{
+    position:absolute;
+    right:23px;
+    bottom:3px;
+    width:50px;height:50px;
+    background:var(--green);
+    color:#08130D;
+    font-size:22px;
+    box-shadow:0 4px 14px var(--glow-green), 0 2px 8px rgba(0,0,0,0.5);
+    opacity:0;
+    transform:translate(0, 0) scale(0.4);
+    pointer-events:none !important;
+    transition:opacity .22s ease, transform .26s ease;
+    z-index:-1;
+  }
+  .fab.revealed #fabIncomeBtn{
+    animation:fabSwipeIn .3s linear forwards;
+    pointer-events:all !important;
+    z-index:1;
+  }
+  @keyframes fabSwipeIn{
+    0%{   opacity:0;    transform:translate(0px,     0px)     scale(0.40); }
+    10%{  opacity:0.1;  transform:translate(-9.9px,  -11.9px) scale(0.49); }
+    20%{  opacity:0.2;  transform:translate(-18.8px, -23.5px) scale(0.59); }
+    30%{  opacity:0.3;  transform:translate(-25.9px, -34.5px) scale(0.67); }
+    40%{  opacity:0.4;  transform:translate(-30.4px, -44.7px) scale(0.75); }
+    50%{  opacity:0.5;  transform:translate(-32px,   -53.7px) scale(0.82); }
+    60%{  opacity:0.6;  transform:translate(-30.4px, -61.5px) scale(0.89); }
+    70%{  opacity:0.7;  transform:translate(-25.9px, -67.7px) scale(0.93); }
+    80%{  opacity:0.8;  transform:translate(-18.8px, -72.3px) scale(0.97); }
+    90%{  opacity:0.9;  transform:translate(-9.9px,  -75.1px) scale(0.99); }
+    100%{ opacity:1;    transform:translate(0px,     -76px)   scale(1);   }
+  }
+  .fab-hint{
+    position:absolute;
+    right:78px;
+    bottom:79px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:12px;
+    font-weight:600;
+    padding:6px 12px;
+    border-radius:20px;
+    white-space:nowrap;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .12s ease;
+    box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  }
+  .fab.revealed .fab-hint{
+    opacity:1;
+    transition:opacity .12s ease .3s;
   }
   nav.tabbar{
     position:fixed;left:50%;transform:translateX(-50%);bottom:0;
@@ -688,6 +744,11 @@
           <span>Cycle start date</span>
           <input type="date" id="setCycleStart">
         </label>
+        <label class="field">
+          <span>Cycle length (days)</span>
+          <input type="number" inputmode="numeric" min="1" max="90" step="1" id="setCycleLength">
+        </label>
+        <p style="font-size:11px;color:var(--ink-soft);margin:-10px 0 16px;line-height:1.5;">Applies to this cycle. Future cycles will use this length too, until you change it again.</p>
         <div class="field-divider">Wallet starting points</div>
         <label class="field">
           <span>Cash in hand</span>
@@ -725,7 +786,9 @@
   </main>
 
   <div class="fab" id="fabWrap">
-    <button id="fabBtn">+</button>
+    <span class="fab-hint" id="fabIncomeHint">Income</span>
+    <button id="fabIncomeBtn" aria-label="Log income">+</button>
+    <button id="fabBtn" aria-label="Log expense">+</button>
   </div>
 
   <nav class="tabbar">
@@ -799,7 +862,13 @@
   var STORE_ENTRIES = "dailyLedger.entries";
   var STORE_THEME = "dailyLedger.theme";
   var STORE_DRIVE = "dailyLedger.drive";
-  var CYCLE_LENGTH = 30;
+  var STORE_CYCLE_LENGTH = "dailyLedger.cycleLengthDefault";
+  function loadCycleLengthDefault(){
+    var v = parseInt(localStorage.getItem(STORE_CYCLE_LENGTH), 10);
+    return (!isNaN(v) && v>=1) ? Math.min(90, v) : 30;
+  }
+  function saveCycleLengthDefault(v){ localStorage.setItem(STORE_CYCLE_LENGTH, String(v)); }
+  var CYCLE_LENGTH = loadCycleLengthDefault();
 
   // Replace with the OAuth Client ID from your Google Cloud Console project
   // (Credentials > OAuth client ID > Web application). See setup notes below.
@@ -1014,7 +1083,84 @@
     overlay.classList.add('active');
   }
   function closeSheet(){ overlay.classList.remove('active'); state.editingEntryId = null; }
-  document.getElementById('fabBtn').addEventListener('click', function(){ openSheet('expense'); });
+  (function setupFab(){
+    var fabWrap = document.getElementById('fabWrap');
+    var fabBtn = document.getElementById('fabBtn');
+    var fabIncomeBtn = document.getElementById('fabIncomeBtn');
+    var LONG_PRESS_MS = 380;
+    var pressTimer = null;
+    var longPressFired = false;
+    var revealHideTimer = null;
+
+    function reveal(){
+      clearTimeout(revealHideTimer);
+      fabWrap.classList.add('revealed');
+    }
+    function hide(delay){
+      clearTimeout(revealHideTimer);
+      revealHideTimer = setTimeout(function(){
+        fabWrap.classList.remove('revealed');
+      }, delay || 0);
+    }
+
+    // Desktop: hovering the FAB reveals the income button.
+    fabWrap.addEventListener('pointerenter', function(e){
+      if(e.pointerType === 'mouse'){ reveal(); }
+    });
+    fabWrap.addEventListener('pointerleave', function(e){
+      if(e.pointerType === 'mouse'){ hide(150); }
+    });
+
+    // Touch: holding the main button reveals the income button; swiping
+    // onto it and releasing (or tapping it once revealed) logs income.
+    fabBtn.addEventListener('pointerdown', function(e){
+      longPressFired = false;
+      if(e.pointerType === 'touch'){
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(function(){
+          longPressFired = true;
+          reveal();
+          if(navigator.vibrate){ navigator.vibrate(12); }
+        }, LONG_PRESS_MS);
+      }
+    });
+
+    fabBtn.addEventListener('pointerup', function(e){
+      if(e.pointerType !== 'touch'){ return; }
+      clearTimeout(pressTimer);
+      if(longPressFired){
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        if(el && (el === fabIncomeBtn || fabIncomeBtn.contains(el))){
+          hide(0);
+          openSheet('income');
+        } else {
+          // Held but released back on the main button — keep the income
+          // button visible briefly so a follow-up tap still works.
+          hide(2500);
+        }
+      }
+    });
+
+    fabBtn.addEventListener('pointercancel', function(){ clearTimeout(pressTimer); });
+
+    fabBtn.addEventListener('click', function(e){
+      if(longPressFired){
+        // Suppress the synthetic click that follows a long-press release.
+        e.preventDefault();
+        e.stopPropagation();
+        longPressFired = false;
+        return;
+      }
+      openSheet('expense');
+    });
+
+    fabIncomeBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      hide(0);
+      openSheet('income');
+    });
+  })();
   document.getElementById('btnAddExpense').addEventListener('click', function(){ openSheet('expense'); });
   document.getElementById('btnAddIncome').addEventListener('click', function(){ openSheet('income'); });
   document.getElementById('btnCancelEntry').addEventListener('click', closeSheet);
@@ -1139,8 +1285,14 @@
     var cashStart = parseFloat(document.getElementById('setCash').value); if(isNaN(cashStart)||cashStart<0) cashStart=0;
     var onlineStart = parseFloat(document.getElementById('setOnline').value); if(isNaN(onlineStart)||onlineStart<0) onlineStart=0;
     var startDateVal = document.getElementById('setCycleStart').value;
+    var lengthVal = parseInt(document.getElementById('setCycleLength').value, 10);
     var cfg = getActiveCycle();
     if(startDateVal){ cfg.startDate = startDateVal; }
+    if(!isNaN(lengthVal) && lengthVal >= 1){
+      cfg.length = Math.min(90, lengthVal);
+      CYCLE_LENGTH = cfg.length;
+      saveCycleLengthDefault(CYCLE_LENGTH);
+    }
     cfg.savingsGoal = savings;
     cfg.cashStart = cashStart;
     cfg.onlineStart = onlineStart;
@@ -1737,6 +1889,7 @@
     document.getElementById('setCash').value = f.cfg.cashStart||0;
     document.getElementById('setOnline').value = f.cfg.onlineStart||0;
     document.getElementById('setCycleStart').value = f.cfg.startDate;
+    document.getElementById('setCycleLength').value = f.cfg.length;
     Array.prototype.forEach.call(document.querySelectorAll('#themeToggle .method-btn'), function(b){
       b.classList.toggle('selected', b.getAttribute('data-theme-choice')===state.theme);
     });
