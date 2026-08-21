@@ -492,6 +492,9 @@
     padding:0 20px;
     pointer-events:none;
     z-index:5;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
   }
   .fab button{
     pointer-events:all;
@@ -502,6 +505,9 @@
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
     touch-action:none;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
   }
   #fabIncomeBtn{
     position:absolute;
@@ -1116,6 +1122,7 @@
     fabBtn.addEventListener('pointerdown', function(e){
       longPressFired = false;
       if(e.pointerType === 'touch'){
+        e.preventDefault();
         clearTimeout(pressTimer);
         pressTimer = setTimeout(function(){
           longPressFired = true;
