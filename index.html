@@ -814,8 +814,8 @@
     <label class="field">
       <span>Paid with</span>
       <div class="method-toggle" id="methodToggle">
-        <button type="button" class="method-btn selected" data-method="cash">Cash</button>
-        <button type="button" class="method-btn" data-method="online">Online</button>
+        <button type="button" class="method-btn selected" data-method="online">Online</button>
+        <button type="button" class="method-btn" data-method="cash">Cash</button>
       </div>
     </label>
     <label class="field">
@@ -953,7 +953,7 @@
     activeTab: "today",
     sheetType: "expense",
     selectedCategory: "Food",
-    selectedMethod: "cash",
+    selectedMethod: "online",
     historyMethod: "all",
     editingEntryId: null,
     theme: loadTheme()
@@ -1072,7 +1072,7 @@
     state.sheetType = type;
     state.editingEntryId = entry ? entry.id : null;
     state.selectedCategory = entry ? entry.category : "Food";
-    state.selectedMethod = entry ? entry.method : "cash";
+    state.selectedMethod = entry ? entry.method : "online";
     Array.prototype.forEach.call(document.querySelectorAll('#methodToggle .method-btn'), function(b){
       b.classList.toggle('selected', b.getAttribute('data-method')===state.selectedMethod);
     });
